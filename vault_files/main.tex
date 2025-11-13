@@ -1,0 +1,41 @@
+\documentclass[12pt,oneside,a4paper]{extarticle} 
+\usepackage{geometry}
+ \geometry{
+%showframe,
+a4paper,
+marginparsep=-0.75em,
+%marginparwidth=1.0em,
+%paperwidth=21.0cm,
+%paperheight=29.7cm,
+left=1.2cm,
+right=1.2cm,
+top=1.0cm,
+bottom=1.0cm,
+includehead,
+includefoot,
+}
+
+\input{config}
+\usepackage[font={small}]{caption}
+%<*SETUP>
+\setcounter{tocdepth}{3}
+
+\pagestyle{fancy}% Change page style to fancy
+% \fancyhead[L]{\textenglish{ת}
+
+\fancyhf{}% Clear header/footer
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+\fancyhead[R]{}
+%\fancyfoot[R]{\textcolor{gray}{\textit{אסף דיין}}}
+\fancyhead[L]{Asaf Dayan}
+\fancyfoot[C]{\thepage}
+\title{Quantum Computing - HW1} 
+\date{}
+\author{Asaf Dayan}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\renewcommand{\thesection}{\arabic{section}}
+\begin{document}
+\maketitle  
+\include{Untitled 1}
+\end{document}

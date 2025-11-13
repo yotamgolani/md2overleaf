@@ -1,0 +1,364 @@
+% hyperlinks
+\usepackage{hyperref}
+\usepackage{tabu}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{cancel}
+\usepackage{soul}
+\usepackage{titlesec}
+\usepackage{physics}
+\usepackage{pdflscape}
+\usepackage{polyglossia} %This is the package that gives access to fonts.
+% for theorems
+\usepackage{amsthm}
+\usepackage{ amssymb }
+\usepackage{wrapfig}
+\usepackage{tikz}
+\usepackage{tikz-network}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{matrix}
+\usetikzlibrary{positioning,chains,fit,shapes,calc}
+\usetikzlibrary{calc,intersections,through,hobby}
+\usetikzlibrary{mindmap}
+\usetikzlibrary {angles,quotes} 
+
+\usepackage[many]{tcolorbox}
+\usepackage{subcaption}
+\usetikzlibrary{trees}
+   	% for COLORED BOXES (tikz and xcolor included)
+\usepackage{mathspec} 			    % for FONTS
+\usepackage{setspace}               % for LINE SPACING
+\usepackage{multicol}     
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18} 
+
+\usepackage{pdfpages}
+% \usepackage[T1]{fontenc}
+
+% Used to include part of tex files in others
+\usepackage{catchfilebetweentags}
+% A FUCKING BRILLIANT Patch to fix issue of catchfilebetweentags: it removes newlines...
+\makeatletter
+\def\CatchFBT@Fin@l#1[#2]{%
+   \begingroup
+      %\endlinechar\m@ne % <- this is the guilty party
+      \makeatletter #2%
+      \scantokens\expandafter{%
+         \expandafter\CatchFBT@tok\expandafter{\the\CatchFBT@tok}}%
+      \CatchFBT@IsAToken{#1}
+         {\global#1\expandafter{\the\CatchFBT@tok}}
+         {\xdef#1{\the\CatchFBT@tok}}%
+      \ifx\CatchFBT@tok#1\else\global\CatchFBT@tok{}\fi
+   \endgroup
+}% \CatchFBT@Final
+\makeatother
+
+
+% good af for maths
+
+
+% Change bullet types in itemize
+\usepackage{enumitem}
+\usepackage{pifont}
+
+% Headers
+\usepackage[headheight=12mm,headsep=5mm]{geometry}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+% Table
+\usepackage{amsfonts}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{parskip}
+\usepackage{polyglossia}
+% These two packages
+\usepackage{etoolbox}
+\usepackage{fontspec}
+\setmainfont{David CLM}
+\newfontfamily\quotefont{Cardo}
+\AtBeginEnvironment{quote}{\quotefont}
+\usepackage{tabularx}
+
+\setdefaultlanguage{hebrew}  %this makes the titles RTL, switch these if you write mostly in English
+\setotherlanguage{english}  
+\newfontfamily\hebrewfont[Script=Hebrew]{David CLM} %This font will work in Overleaf, Linux and Mac installs, if you're running windows you'd need to pick the right ones
+\newfontfamily\hebrewfontsf[Script=Hebrew]{David CLM}
+\newfontfamily\englishfont{Latin Modern Roman}
+% \newfontfamily\hebrewfontrm[Script=Hebrew]{Cardo}
+
+% \setsansfont[Script=Hebrew]{Arial}
+% \setmonofont{Arial}
+
+
+\usepackage{tabularx,booktabs,multirow} % all about tables: booktabs gives the standard formatting, multirow allows cells to span over multiple rows.
+\theoremstyle{definition}
+% % Define the Hebrew theorem environment
+\newtheorem{theorem}{משפט}
+\newtheorem{definition}{הגדרה}
+% \crefname{theorem}{משפט}{משפטים}
+% \crefname{deinition}{הגדרה}{הגדרות}
+\newtheorem{claim}{טענה}
+% \crefname{claim}{טענה}{טענות}
+
+
+ \newcommand{\problemdef}[3]{
+  \begin{center}
+    \begin{minipage}{0.7\textwidth}
+      \noindent
+      \fontspec{Miriam Mono CLM}
+      #1
+
+      \vspace{2pt}
+      \setlength{\tabcolsep}{3pt}
+      \begin{tabularx}{\textwidth}{lX lX}
+        \textbf{קלט:} 	& #2 \\
+        \textbf{שאלה:} 	& #3
+      \end{tabularx}
+    \end{minipage}
+  \end{center}
+}
+
+
+
+\newcommand{\NP}{\textenglish{\textnormal{\textsf{NP}}}}
+\newcommand{\PP}{\textenglish{\textnormal{\textsf{P}}}}
+% \newcommand{\NP}{NP}
+% \newcommand{\PP}{P}
+\newcommand{\bigO}{\mathcal{O}}
+
+\usepackage[realmainfile]{currfile}
+
+% Compare Strings
+\newcommand{\StrCompare}[2]{%
+  \ifthenelse{\equal{\string \detokenize{#1}}{\string \detokenize{#2}}}
+    {TRUE}
+    {FALSE}%
+}{}
+
+% substrings
+\usepackage{stringstrings}
+
+% get unit number
+\newcommand{\documentNumber}[0]{\substring{\currfilebase}{3}{4}\par}
+
+% colors
+\definecolor{LightCyan}{rgb}{0.88,1,1}
+
+\renewcommand{\tightlist}{}%
+
+
+
+
+
+% CREATE RANDOM INTS
+% \usepackage{pgf}
+% % \pgfmathsetseed{\number\randomseed} % to ensure that it is randomized 
+% \newcommand{\randomnum}[1]{% 
+% \pgfmathsetmacro{\a}{1}%
+% \pgfmathsetmacro{\b}{int(#1)}% 
+% \pgfmathsetmacro{\thenum}{int(random(\a,\b))}%
+% \thenum%
+% }%
+% \randomnum{10}
+\usepackage{esint}
+\usepackage{fontawesome}
+% Champions Tip
+\usepackage{stackengine}
+\usepackage{scalerel}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{amssymb}
+\newcommand\champTip[1][2ex]{%
+  \scaleto{
+  \stackengine{-0.1pt}{\color{white}\tiny\bfseries !}{\scalebox{1.}[.9]{%
+  \color{red}$\blacktriangle$}}{O}{c}{F}{F}{L}
+  }{#1}%
+}
+\newfontfamily\bulletfont{Latin Modern Roman}
+\renewcommand*\labelitemi{\bulletfont\textbullet}
+\definecolor{main}{HTML}{5989cf}    % setting main color to be used
+\definecolor{sub}{HTML}{cde4ff} 
+\definecolor{red}{HTML}{e60000}
+\definecolor{green}{HTML}{44cc00}
+\definecolor{blue}{HTML}{0066ff}
+\newcommand{\etext}[1]{\text{\foreignlanguage{english}{#1}}}
+
+
+\newtcolorbox{boxH}{
+    colback = sub, 
+    colframe = main, 
+    boxrule = 0pt, 
+    rightrule = 6pt % left rule weight
+    }
+
+\newtcolorbox{RedBox}{
+    colback = red!5!white, 
+    colframe = red, 
+    boxrule = 0pt, 
+    rightrule = 6pt % left rule weight
+    }
+    
+\newtcolorbox{GreenBox}{
+    colback = green!5!white, 
+    colframe = green, 
+    boxrule = 0pt, 
+    rightrule = 6pt % left rule weight
+    }
+\newtcolorbox{BlueBox}{
+    colback = blue!5!white, 
+    colframe = blue, 
+    boxrule = 0pt, 
+    rightrule = 6pt % left rule weight
+    }
+\newtcolorbox{YellowBox}{
+    colback = yellow!5!white, 
+    colframe = yellow, 
+    boxrule = 0pt, 
+    rightrule = 6pt % left rule weight
+    }
+
+\newtcolorbox{PurpleBox}{
+    colback = violet!3!white, 
+    colframe =  violet!40!white, 
+    boxrule = 0pt, 
+    rightrule = 6pt % left rule weight
+    }
+
+\newcommand{\yellowb}[1]{\begin{YellowBox}#1\end{YellowBox}}
+\newcommand{\purpleb}[1]{\begin{PurpleBox}#1\end{PurpleBox}}
+\newcommand{\Blueb}[1]{\begin{BlueBox}#1\end{BlueBox}}
+\newcommand{\Greenb}[1]{\begin{GreenBox}#1\end{GreenBox}}
+\newcommand{\redb}[1]{\begin{RedBox}#1\end{RedBox}}
+
+\newtcolorbox{boxA}{
+    fontupper = \bf,
+    boxrule = 1.5pt,
+    colframe = black % frame color
+}
+
+\newtcolorbox{boxB}{
+    fontupper = \bf\color{main}, % font color
+    boxrule = 1.5pt,
+    colframe = main,
+    rounded corners,
+    arc = 5pt   % corners roundness
+}
+
+\newtcolorbox{boxC}{
+     boxrule = 0pt,  % no borders
+    rightrule = 2.5pt
+}
+
+\newtcolorbox{boxD}{
+    colback = sub, 
+    colframe = main, 
+    boxrule = 0pt, 
+    toprule = 3pt, % top rule weight
+    bottomrule = 3pt % bottom rule weight
+}
+
+\newtcolorbox{boxE}{
+    enhanced,
+    boxrule = 0pt, % clearing the default rule
+    borderline = {0.75pt}{0pt}{main}, % outer line
+    borderline = {0.75pt}{2pt}{sub} % inner line
+}
+
+\newtcolorbox{boxF}{
+    colback = sub,
+    enhanced,
+    boxrule = 1.5pt, 
+    colframe = white, % making the base for dash line
+    borderline = {1.5pt}{0pt}{main, dashed} % add "dashed" for dashed line
+}
+
+\newtcolorbox{boxG}{
+    enhanced,
+    boxrule = 0pt,
+    colback = sub,
+    borderline west = {1pt}{0pt}{main}, 
+    borderline west = {0.75pt}{2pt}{main}, 
+    borderline east = {1pt}{0pt}{main}, 
+    borderline east = {0.75pt}{2pt}{main}
+}
+
+\newtcolorbox{boxI}{
+    colback = sub, 
+    colframe = main, 
+    boxrule = 0pt, 
+    toprule = 6pt % top rule weight
+}
+
+\newtcolorbox{boxJ}{
+    sharpish corners, % better drop shadow
+    colback = sub, 
+    colframe = main, 
+    boxrule = 0pt, 
+    toprule = 4.5pt, % top rule weight
+    enhanced,
+    fuzzy shadow = {0pt}{-2pt}{-0.5pt}{0.5pt}{black!35} % {xshift}{yshift}{offset}{step}{options} 
+}
+
+\newtcolorbox{boxK}{
+    sharpish corners, % better drop shadow
+    boxrule = 0pt,
+    toprule = 4.5pt, % top rule weight
+    enhanced,
+    fuzzy shadow = {0pt}{-2pt}{-0.5pt}{0.5pt}{black!35} % {xshift}{yshift}{offset}{step}{options} 
+}
+
+\newtcolorbox{boxL}{
+    fontupper = \color{main},
+    rounded corners,
+    arc = 6pt,
+    colback = sub, 
+    colframe = main!50, 
+    boxrule = 0pt, 
+    bottomrule = 4.5pt 
+}
+
+\newtcolorbox{boxM}{
+    fontupper = \color{white},
+    rounded corners,
+    arc = 6pt,
+    colback = main!80, 
+    colframe = main, 
+    boxrule = 0pt, 
+    bottomrule = 4.5pt,
+    enhanced,
+    fuzzy shadow = {0pt}{-3pt}{-0.5pt}{0.5pt}{black!35}
+}
+\newtcolorbox{boxAN}{
+    boxrule = 0pt,
+    rightrule = 2.5pt, % top rule weight
+    enhanced,
+   
+}
+
+ \newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
+    \def\independenT#1#2{\mathrel{\setbox0\hbox{$#1#2$}%
+    \copy0\kern-\wd0\mkern4mu\box0}} 
+            
+\newcommand{\noin}{\noindent}    
+\newcommand{\logit}{\textrm{logit}} 
+\newcommand{\var}{\textrm{Var}}
+\newcommand{\cov}{\textrm{Cov}} 
+\newcommand{\corr}{\textrm{Corr}} 
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\Bern}{\textrm{Bern}}
+\newcommand{\Bin}{\textrm{Bin}}
+\newcommand{\Beta}{\textrm{Beta}}
+\newcommand{\Gam}{\textrm{Gamma}}
+\newcommand{\Expo}{\textrm{Expo}}
+\newcommand{\Pois}{\textrm{Pois}}
+\newcommand{\Unif}{\textrm{Unif}}
+\newcommand{\Geom}{\textrm{Geom}}
+\newcommand{\NBin}{\textrm{NBin}}
+\newcommand{\Hypergeometric}{\textrm{HGeom}}
+\newcommand{\HGeom}{\textrm{HGeom}}
+\newcommand{\Mult}{\textrm{Mult}}
