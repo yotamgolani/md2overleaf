@@ -5079,6 +5079,7 @@ var Md2OverleafPlugin = class extends import_obsidian.Plugin {
       new import_obsidian.Notice("No active note selected.");
       return;
     }
+    const Plugindir = this.manifest.dir || __dirname;
     const vaultPath = this.app.vault.adapter.getBasePath();
     const expand = (p) => p.replace("${vault}", vaultPath);
     const filePath = import_path.default.join(vaultPath, file.path);
@@ -5113,12 +5114,30 @@ var Md2OverleafPlugin = class extends import_obsidian.Plugin {
       await import_fs_extra.default.ensureDir(stageRoot);
       const stagedTexPath = import_path.default.join(stageRoot, `${base}.tex`);
       const toCopy = [];
+      function wrapInFigure(rel) {
+        const labelBase = rel.replace(/^pictures\//, "").replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9]+/g, "-");
+        return `\\begin{figure}[H]
+  \\centering
+  \\includegraphics[width=\\linewidth]{${rel}}
+  \\caption{}
+  \\label{fig:${labelBase}}
+\\end{figure}`;
+      }
+      const reMdImgInTex = /!\[\]\((pictures\/[^)]+)\)/g;
+      tex = tex.replace(reMdImgInTex, (_full, relPath) => {
+        const fsRel = decodeURIComponent(relPath);
+        const relNormalized = fsRel.replace(/\\/g, "/");
+        const abs = import_path.default.join(vaultPath, relNormalized);
+        toCopy.push({ abs, rel: relNormalized });
+        return wrapInFigure(relNormalized);
+      });
       const reBounded = /\\pandocbounded\{\s*\\includegraphics(?:\[[^\]]*\])?\{(pictures\/[^}]+)\}\s*\}/g;
       tex = tex.replace(reBounded, (_full, relPath) => {
-        const abs = import_path.default.join(vaultPath, relPath);
-        const relNormalized = relPath.replace(/\\/g, "/");
-        toCopy.push({ abs, rel: relNormalized });
-        return `\\includegraphics[width=\\linewidth]{${relNormalized}}`;
+        const fsRel = decodeURIComponent(relPath);
+        const rel = fsRel.replace(/\\/g, "/");
+        const abs = import_path.default.join(vaultPath, rel);
+        toCopy.push({ abs, rel });
+        return wrapInFigure(rel);
       });
       const reTldrawEscaped = /!\{\[\}\{\[\}(pictures\/[^{}]+?\.md)\{\]\}\{\]\}/g;
       const exportTldrawMdToPng = async (mdAbs) => {
@@ -5164,7 +5183,7 @@ var Md2OverleafPlugin = class extends import_obsidian.Plugin {
         const absMd = import_path.default.join(vaultPath, relMd);
         const exported = await exportTldrawMdToPng(absMd);
         if (exported?.pngRel && exported?.pngAbs) {
-          const replacement = `\\includegraphics[width=\\linewidth]{${exported.pngRel}}`;
+          const replacement = `\\begin{figure}[H] \\centering \\includegraphics[width=\\linewidth]{${exported.pngRel}} \\end{figure}`;
           tex = tex.replace(full, replacement);
         } else {
           const replacement = `% [md2overleaf] missing tldraw export for ${relMd}`;
