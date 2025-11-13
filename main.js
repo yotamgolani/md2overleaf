@@ -5123,7 +5123,7 @@ var Md2OverleafPlugin = class extends import_obsidian.Plugin {
   \\label{fig:${labelBase}}
 \\end{figure}`;
       }
-      const reMdImgInTex = /!\[\]\((pictures\/[^)]+)\)/g;
+      const reMdImgInTex = /!\{\[\}\{\[}([^{}]+\.png)\{\]\}\{\]\}/g;
       tex = tex.replace(reMdImgInTex, (_full, relPath) => {
         const fsRel = decodeURIComponent(relPath);
         const relNormalized = fsRel.replace(/\\/g, "/");
