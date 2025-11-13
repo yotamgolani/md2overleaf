@@ -32,7 +32,10 @@ This plugin:
 3. npm install
 4. npm run build
 5. Then copy the dist/ folder into: '''<Vault>/.obsidian/plugins/md2overleaf/'''
-6. Enable it in Settings → Community Plugins.
+6.  Downlod the vault_files folder and copy the files directly to your vault
+7. open Terminal and cd to your vault
+8. run ''' chmod +x ./mdtex.sh '''
+9, Enable it in Settings → Community Plugins.
 
 ### Required Tools
 pandoc version 3.2.1 or higher
