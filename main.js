@@ -5054,6 +5054,7 @@ var import_openurl = __toESM(require_openurl());
 var import_util2 = require("util");
 var import_os = __toESM(require("os"));
 var import_crypto = require("crypto");
+var import_electron = require("electron");
 
 // pandocPipeline.ts
 var import_fs_extra = __toESM(require_lib());
@@ -5135,6 +5136,11 @@ var Md2OverleafPlugin = class extends import_obsidian.Plugin {
       name: "Export to Overleaf",
       callback: () => this.exportToOverleaf()
     });
+    this.addCommand({
+      id: "copy-overleaf-tex",
+      name: "Copy Overleaf TeX to clipboard",
+      callback: () => this.copyTexToClipboard()
+    });
     this.addSettingTab(new Md2OverleafSettingTab(this.app, this));
   }
   async loadSettings() {
@@ -5172,172 +5178,124 @@ var Md2OverleafPlugin = class extends import_obsidian.Plugin {
       new import_obsidian.Notice("Pandoc conversion failed. Check console for details.");
       return;
     }
+    console.log("\u{1F50D} Expecting TeX at:", texPath);
+    if (!await import_fs_extra2.default.pathExists(texPath)) {
+      throw new Error(`TeX file not found at ${texPath}`);
+    }
+    let stageInfo = null;
     try {
-      console.log("\u{1F50D} Expecting TEX at:", texPath);
-      if (!await import_fs_extra2.default.pathExists(texPath)) {
-        throw new Error(`TEX file not found at ${texPath}`);
+      stageInfo = await this.buildStage({
+        texPath,
+        base,
+        outDir,
+        vaultPath,
+        pluginDir,
+        npxEnv
+      });
+      const zip = new import_adm_zip.default();
+      zip.addLocalFolder(stageInfo.stageDir, ".");
+      const uniqueZipName = `${(0, import_crypto.randomUUID)()}.zip`;
+      const zipPath = import_path2.default.join(outDir, uniqueZipName);
+      zip.writeZip(zipPath);
+      new import_obsidian.Notice("Uploading to Overleaf...");
+      const uploadHost = this.settings.uploadHost?.trim() || "https://x0.at";
+      const normalizedHost = uploadHost.replace(/\/+$/, "");
+      const { stdout } = await execFileAsync2(
+        "curl",
+        ["-s", "-F", `file=@${uniqueZipName}`, normalizedHost],
+        {
+          cwd: outDir,
+          env: shellEnv,
+          maxBuffer: 32 * 1024 * 1024
+        }
+      );
+      const trimmed = stdout.trim();
+      if (!trimmed.startsWith("http")) {
+        throw new Error(`Upload failed: ${stdout}`);
       }
-      let tex = await import_fs_extra2.default.readFile(texPath, "utf8");
-      let stageRoot = null;
-      try {
-        const stageDir = await import_fs_extra2.default.mkdtemp(import_path2.default.join(import_os.default.tmpdir(), "md2overleaf-"));
-        stageRoot = stageDir;
-        const stagedTexPath = import_path2.default.join(stageDir, `${base}.tex`);
-        const toCopy = [];
-        const wrapInFigure = (rel) => {
-          const labelBase = rel.replace(/^pictures\//, "").replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9]+/g, "-");
-          return `\\begin{figure}[H]
-  \\centering
-  \\includegraphics[width=\\linewidth]{${rel}}
-  \\caption{}
-  \\label{fig:${labelBase}}
-\\end{figure}`;
-        };
-        const reMdImgInTex = /!\{\[\}\{\[}([^{}]+\.png)\{\]\}\{\]\}/g;
-        tex = tex.replace(reMdImgInTex, (_full, relPath) => {
-          const fsRel = decodeURIComponent(relPath);
-          const relNormalized = fsRel.replace(/\\/g, "/");
-          const abs = import_path2.default.join(vaultPath, relNormalized);
-          toCopy.push({ abs, rel: relNormalized });
-          return wrapInFigure(relNormalized);
-        });
-        const reBounded = /\\pandocbounded\{\s*\\includegraphics(?:\[[^\]]*\])?\{(pictures\/[^}]+)\}\s*\}/g;
-        tex = tex.replace(reBounded, (_full, relPath) => {
-          const fsRel = decodeURIComponent(relPath);
-          const rel = fsRel.replace(/\\/g, "/");
-          const abs = import_path2.default.join(vaultPath, rel);
-          toCopy.push({ abs, rel });
-          return wrapInFigure(rel);
-        });
-        const reTldrawEscaped = /!\{\[\}\{\[}(pictures\/[^{}]+?\.md)\{\]\}\{\]\}/g;
-        const exportTldrawMdToPng = async (mdAbs) => {
-          try {
-            const src = await import_fs_extra2.default.readFile(mdAbs, "utf8");
-            const match = src.match(/```tldraw\s*\n([\s\S]*?)```/);
-            if (!match)
-              return null;
-            const drawJson = match[1];
-            const drawBase = import_path2.default.basename(mdAbs, ".md");
-            const pngRel = `pictures/${drawBase}.png`;
-            const pngAbs = import_path2.default.join(stageDir, pngRel);
-            const tmpTldr = import_path2.default.join(outDir, `${drawBase}.tldr`);
-            await import_fs_extra2.default.ensureDir(import_path2.default.dirname(pngAbs));
-            await import_fs_extra2.default.writeFile(tmpTldr, drawJson, "utf8");
-            await execFileAsync2(
-              "npx",
-              [
-                "-y",
-                "@tldraw/cli",
-                "export",
-                tmpTldr,
-                "--format",
-                "png",
-                "--output",
-                pngAbs,
-                "--overwrite"
-              ],
-              {
-                cwd: vaultPath,
-                env: npxEnv,
-                maxBuffer: 32 * 1024 * 1024
-              }
-            );
-            await import_fs_extra2.default.remove(tmpTldr);
-            console.log("[tldraw] converted:", pngAbs);
-            return { pngRel, pngAbs };
-          } catch (e) {
-            console.warn("[md2overleaf] tldraw export failed:", mdAbs, e);
-            return null;
-          }
-        };
-        for (const match of Array.from(tex.matchAll(reTldrawEscaped))) {
-          const full = match[0];
-          const relMd = match[1].trim();
-          const absMd = import_path2.default.join(vaultPath, relMd);
-          const exported = await exportTldrawMdToPng(absMd);
-          if (exported?.pngRel && exported?.pngAbs) {
-            const replacement = `\\begin{figure}[H] \\centering \\includegraphics[width=\\linewidth]{${exported.pngRel}} \\end{figure}`;
-            tex = tex.replace(full, replacement);
-          } else {
-            const replacement = `% [md2overleaf] missing tldraw export for ${relMd}`;
-            tex = tex.replace(full, replacement);
-          }
-        }
-        for (const { abs, rel } of toCopy) {
-          const dest = import_path2.default.join(stageDir, rel);
-          await import_fs_extra2.default.ensureDir(import_path2.default.dirname(dest));
-          if (await import_fs_extra2.default.pathExists(abs)) {
-            await import_fs_extra2.default.copy(abs, dest);
-          } else {
-            console.warn("[md2overleaf] missing referenced image:", abs);
-          }
-        }
-        await import_fs_extra2.default.writeFile(stagedTexPath, tex, "utf8");
-        const configPath = import_path2.default.join(pluginDir, "config.tex");
-        if (await import_fs_extra2.default.pathExists(configPath)) {
-          await import_fs_extra2.default.copy(configPath, import_path2.default.join(stageDir, "config.tex"));
-        } else {
-          console.warn("[md2overleaf] missing config.tex template at", configPath);
-        }
-        const baseNoExt = base.replace(/\.tex$/i, "");
-        const niceTitle = baseNoExt.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-        const mainTemplatePath = import_path2.default.join(pluginDir, "main.tex");
-        if (await import_fs_extra2.default.pathExists(mainTemplatePath)) {
-          let titletex = await import_fs_extra2.default.readFile(mainTemplatePath, "utf8");
-          titletex = titletex.replace(/\\title\s*\{[^}]*\}/, `\\title{${niceTitle}}`);
-          titletex = titletex.replace(/\\include\s*\{[^}]*\}/, `\\include{${baseNoExt}}`);
-          const dst = import_path2.default.join(stageDir, "main.tex");
-          await import_fs_extra2.default.writeFile(dst, titletex, "utf8");
-        } else {
-          console.warn("[md2overleaf] missing main.tex template at", mainTemplatePath);
-        }
-        const zip = new import_adm_zip.default();
-        zip.addLocalFolder(stageDir, ".");
-        const uniqueZipName = `${(0, import_crypto.randomUUID)()}.zip`;
-        const zipPath = import_path2.default.join(outDir, uniqueZipName);
-        zip.writeZip(zipPath);
-        new import_obsidian.Notice("Uploading to Overleaf...");
-        const uploadHost = this.settings.uploadHost?.trim() || "https://x0.at";
-        const normalizedHost = uploadHost.replace(/\/+$/, "");
-        const { stdout } = await execFileAsync2(
-          "curl",
-          ["-s", "-F", `file=@${uniqueZipName}`, normalizedHost],
-          {
-            cwd: outDir,
-            env: shellEnv,
-            maxBuffer: 32 * 1024 * 1024
-          }
-        );
-        const trimmed = stdout.trim();
-        if (!trimmed.startsWith("http")) {
-          throw new Error(`Upload failed: ${stdout}`);
-        }
-        const zipUrl = trimmed.split(/\s+/)[0];
-        const overleafUrl = `https://www.overleaf.com/docs?snip_uri=${encodeURIComponent(zipUrl)}&engine=xelatex&name=${encodeURIComponent(base)}`;
-        console.log("\u{1F33F} Overleaf URL:", overleafUrl);
-        if (this.settings.autoOpen) {
-          (0, import_openurl.open)(overleafUrl);
-          new import_obsidian.Notice("Opening in Overleaf...");
-        } else {
-          new import_obsidian.Notice("Upload complete. See console for Overleaf URL.");
-        }
-      } finally {
-        if (stageRoot) {
-          try {
-            await import_fs_extra2.default.remove(stageRoot);
-          } catch (cleanupError) {
-            console.warn("[md2overleaf] failed to clean temp dir", stageRoot, cleanupError);
-          }
-        }
-        try {
-          await import_fs_extra2.default.remove(outDir);
-        } catch (cleanupError) {
-          console.warn("[md2overleaf] failed to clean export folder", outDir, cleanupError);
-        }
+      const zipUrl = trimmed.split(/\s+/)[0];
+      const overleafUrl = `https://www.overleaf.com/docs?snip_uri=${encodeURIComponent(zipUrl)}&engine=xelatex&name=${encodeURIComponent(base)}`;
+      console.log("\u{1F33F} Overleaf URL:", overleafUrl);
+      if (this.settings.autoOpen) {
+        (0, import_openurl.open)(overleafUrl);
+        new import_obsidian.Notice("Opening in Overleaf...");
+      } else {
+        new import_obsidian.Notice("Upload complete. See console for Overleaf URL.");
       }
     } catch (error) {
       console.error("Packaging or upload failed:", error);
       new import_obsidian.Notice("Packaging or upload failed. See console for details.");
+    } finally {
+      if (stageInfo) {
+        try {
+          await import_fs_extra2.default.remove(stageInfo.stageDir);
+        } catch (cleanupError) {
+          console.warn("[md2overleaf] failed to clean temp dir", stageInfo.stageDir, cleanupError);
+        }
+      }
+      try {
+        await import_fs_extra2.default.remove(outDir);
+      } catch (cleanupError) {
+        console.warn("[md2overleaf] failed to clean export folder", outDir, cleanupError);
+      }
+    }
+  }
+  async copyTexToClipboard() {
+    const file = this.app.workspace.getActiveFile();
+    if (!file) {
+      new import_obsidian.Notice("No active note selected.");
+      return;
+    }
+    const vaultPath = this.app.vault.adapter.getBasePath();
+    const pluginDir = await this.resolvePluginDir(vaultPath);
+    const filePath = import_path2.default.join(vaultPath, file.path);
+    const base = import_path2.default.basename(filePath, ".md");
+    const outDir = import_path2.default.join(vaultPath, ".md2overleaf", base);
+    await import_fs_extra2.default.ensureDir(outDir);
+    const texPath = import_path2.default.join(outDir, `${base}.tex`);
+    const shellEnv = this.buildShellEnv();
+    const npxEnv = this.buildShellEnv({ npm_config_yes: "true" });
+    try {
+      await runPandocPipeline({
+        vaultPath,
+        sourcePath: filePath,
+        texPath,
+        env: shellEnv,
+        filterPath: import_path2.default.join(pluginDir, "final_filter.lua")
+      });
+    } catch (error) {
+      console.error("Pandoc conversion failed:", error);
+      new import_obsidian.Notice("Pandoc conversion failed. Check console for details.");
+      return;
+    }
+    let stageInfo = null;
+    try {
+      stageInfo = await this.buildStage({
+        texPath,
+        base,
+        outDir,
+        vaultPath,
+        pluginDir,
+        npxEnv
+      });
+      import_electron.clipboard.writeText(stageInfo.tex);
+      new import_obsidian.Notice("TeX copied to clipboard.");
+    } catch (error) {
+      console.error("Copy to clipboard failed:", error);
+      new import_obsidian.Notice("Failed to copy TeX. See console for details.");
+    } finally {
+      if (stageInfo) {
+        try {
+          await import_fs_extra2.default.remove(stageInfo.stageDir);
+        } catch (cleanupError) {
+          console.warn("[md2overleaf] failed to clean temp dir", stageInfo.stageDir, cleanupError);
+        }
+      }
+      try {
+        await import_fs_extra2.default.remove(outDir);
+      } catch (cleanupError) {
+        console.warn("[md2overleaf] failed to clean export folder", outDir, cleanupError);
+      }
     }
   }
   buildShellEnv(extra = {}) {
@@ -5346,6 +5304,126 @@ var Md2OverleafPlugin = class extends import_obsidian.Plugin {
       PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
       ...extra
     };
+  }
+  async buildStage(options) {
+    const { texPath, base, outDir, vaultPath, pluginDir, npxEnv } = options;
+    const stageDir = await import_fs_extra2.default.mkdtemp(import_path2.default.join(import_os.default.tmpdir(), "md2overleaf-"));
+    try {
+      let tex = await import_fs_extra2.default.readFile(texPath, "utf8");
+      const stagedTexPath = import_path2.default.join(stageDir, `${base}.tex`);
+      const toCopy = [];
+      const wrapInFigure = (rel) => {
+        const labelBase = rel.replace(/^pictures\//, "").replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9]+/g, "-");
+        return `\\begin{figure}[H]
+  \\centering
+  \\includegraphics[width=\\linewidth]{${rel}}
+  \\caption{}
+  \\label{fig:${labelBase}}
+\\end{figure}`;
+      };
+      const reMdImgInTex = /!\{\[\}\{\[}([^{}]+\.png)\{\]\}\{\]\}/g;
+      tex = tex.replace(reMdImgInTex, (_full, relPath) => {
+        const fsRel = decodeURIComponent(relPath);
+        const relNormalized = fsRel.replace(/\\/g, "/");
+        const abs = import_path2.default.join(vaultPath, relNormalized);
+        toCopy.push({ abs, rel: relNormalized });
+        return wrapInFigure(relNormalized);
+      });
+      const reBounded = /\\pandocbounded\{\s*\\includegraphics(?:\[[^\]]*\])?\{(pictures\/[^}]+)\}\s*\}/g;
+      tex = tex.replace(reBounded, (_full, relPath) => {
+        const fsRel = decodeURIComponent(relPath);
+        const rel = fsRel.replace(/\\/g, "/");
+        const abs = import_path2.default.join(vaultPath, rel);
+        toCopy.push({ abs, rel });
+        return wrapInFigure(rel);
+      });
+      const reTldrawEscaped = /!\{\[\}\{\[}(pictures\/[^{}]+?\.md)\{\]\}\{\]\}/g;
+      const exportTldrawMdToPng = async (mdAbs) => {
+        try {
+          const src = await import_fs_extra2.default.readFile(mdAbs, "utf8");
+          const match = src.match(/```tldraw\s*\n([\s\S]*?)```/);
+          if (!match)
+            return null;
+          const drawJson = match[1];
+          const drawBase = import_path2.default.basename(mdAbs, ".md");
+          const pngRel = `pictures/${drawBase}.png`;
+          const pngAbs = import_path2.default.join(stageDir, pngRel);
+          const tmpTldr = import_path2.default.join(outDir, `${drawBase}.tldr`);
+          await import_fs_extra2.default.ensureDir(import_path2.default.dirname(pngAbs));
+          await import_fs_extra2.default.writeFile(tmpTldr, drawJson, "utf8");
+          await execFileAsync2(
+            "npx",
+            [
+              "-y",
+              "@tldraw/cli",
+              "export",
+              tmpTldr,
+              "--format",
+              "png",
+              "--output",
+              pngAbs,
+              "--overwrite"
+            ],
+            {
+              cwd: vaultPath,
+              env: npxEnv,
+              maxBuffer: 32 * 1024 * 1024
+            }
+          );
+          await import_fs_extra2.default.remove(tmpTldr);
+          console.log("[tldraw] converted:", pngAbs);
+          return { pngRel, pngAbs };
+        } catch (e) {
+          console.warn("[md2overleaf] tldraw export failed:", mdAbs, e);
+          return null;
+        }
+      };
+      for (const match of Array.from(tex.matchAll(reTldrawEscaped))) {
+        const full = match[0];
+        const relMd = match[1].trim();
+        const absMd = import_path2.default.join(vaultPath, relMd);
+        const exported = await exportTldrawMdToPng(absMd);
+        if (exported?.pngRel && exported?.pngAbs) {
+          const replacement = `\\begin{figure}[H] \\centering \\includegraphics[width=\\linewidth]{${exported.pngRel}} \\end{figure}`;
+          tex = tex.replace(full, replacement);
+        } else {
+          const replacement = `% [md2overleaf] missing tldraw export for ${relMd}`;
+          tex = tex.replace(full, replacement);
+        }
+      }
+      for (const { abs, rel } of toCopy) {
+        const dest = import_path2.default.join(stageDir, rel);
+        await import_fs_extra2.default.ensureDir(import_path2.default.dirname(dest));
+        if (await import_fs_extra2.default.pathExists(abs)) {
+          await import_fs_extra2.default.copy(abs, dest);
+        } else {
+          console.warn("[md2overleaf] missing referenced image:", abs);
+        }
+      }
+      await import_fs_extra2.default.writeFile(stagedTexPath, tex, "utf8");
+      const configPath = import_path2.default.join(pluginDir, "config.tex");
+      if (await import_fs_extra2.default.pathExists(configPath)) {
+        await import_fs_extra2.default.copy(configPath, import_path2.default.join(stageDir, "config.tex"));
+      } else {
+        console.warn("[md2overleaf] missing config.tex template at", configPath);
+      }
+      const baseNoExt = base.replace(/\.tex$/i, "");
+      const niceTitle = baseNoExt.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+      const mainTemplatePath = import_path2.default.join(pluginDir, "main.tex");
+      if (await import_fs_extra2.default.pathExists(mainTemplatePath)) {
+        let titletex = await import_fs_extra2.default.readFile(mainTemplatePath, "utf8");
+        titletex = titletex.replace(/\\title\s*\{[^}]*\}/, `\\title{${niceTitle}}`);
+        titletex = titletex.replace(/\\include\s*\{[^}]*\}/, `\\include{${baseNoExt}}`);
+        const dst = import_path2.default.join(stageDir, "main.tex");
+        await import_fs_extra2.default.writeFile(dst, titletex, "utf8");
+      } else {
+        console.warn("[md2overleaf] missing main.tex template at", mainTemplatePath);
+      }
+      return { tex, stageDir };
+    } catch (error) {
+      await import_fs_extra2.default.remove(stageDir);
+      throw error;
+    }
   }
   async resolvePluginDir(vaultPath) {
     if (this.resolvedPluginDir) {

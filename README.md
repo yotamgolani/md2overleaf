@@ -14,14 +14,14 @@ This plugin:
 
 - Packs everything into a ZIP.
 
-- Uploads the ZIP to Overleaf Snippet Import.
+- Uploads the ZIP to Overleaf Snippet Import (or lets you copy the processed TeX to your clipboard for manual updates).
 
 - (optional) Automatically opens the project in Overleaf.
 
 ### Installation (user)
 1. Download the latest release ZIP from GitHub Releases.
 2. Extract it to: ''' <Vault>/.obsidian/plugins/md2overleaf/''' 
-3. Enable it in Settings → Community Plugins.
+3. Enable it in Settings → Community Plugins. You'll now have two commands: “Export to Overleaf” (creates a ZIP + uploads) and “Copy Overleaf TeX to clipboard” (just copies the TeX output).
 
 ### Installation (developer)
 1. git clone https://github.com/asafdayan/md2overleaf
