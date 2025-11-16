@@ -248,18 +248,20 @@ export default class Md2OverleafPlugin extends Plugin {
       tex = tex.replace(reMdImgInTex, (_full, relPath: string) => {
         const fsRel = decodeURIComponent(relPath);
         const relNormalized = fsRel.replace(/\\/g, "/");
-        const abs = path.join(vaultPath, relNormalized);
-        toCopy.push({ abs, rel: relNormalized });
-        return wrapInFigure(relNormalized);
+        const cleanRel = relNormalized.replace(/[\r\n]+/g, " ");
+        const abs = path.join(vaultPath, cleanRel);
+        toCopy.push({ abs, rel: cleanRel });
+        return wrapInFigure(cleanRel);
       });
 
       const reBounded = /\\pandocbounded\{\s*\\includegraphics(?:\[[^\]]*\])?\{(pictures\/[^}]+)\}\s*\}/g;
       tex = tex.replace(reBounded, (_full, relPath: string) => {
         const fsRel = decodeURIComponent(relPath);
         const rel = fsRel.replace(/\\/g, "/");
-        const abs = path.join(vaultPath, rel);
-        toCopy.push({ abs, rel });
-        return wrapInFigure(rel);
+        const cleanRel = rel.replace(/[\r\n]+/g, " ");
+        const abs = path.join(vaultPath, cleanRel);
+        toCopy.push({ abs, rel: cleanRel });
+        return wrapInFigure(cleanRel);
       });
 
       const reTldrawEscaped = /!\{\[\}\{\[}(pictures\/[^{}]+?\.md)\{\]\}\{\]\}/g;
@@ -329,7 +331,16 @@ export default class Md2OverleafPlugin extends Plugin {
         if (await fs.pathExists(abs)) {
           await fs.copy(abs, dest);
         } else {
-          console.warn("[md2overleaf] missing referenced image:", abs);
+          const fallback = await this.resolveMissingImage(rel, vaultPath);
+          if (fallback && (await fs.pathExists(fallback))) {
+            console.log("[md2overleaf] image found via vault scan:", rel, fallback);
+            await fs.copy(fallback, dest);
+          } else {
+            console.warn(
+              "[md2overleaf] missing referenced image despite fallbacks:",
+              abs
+            );
+          }
         }
       }
 
@@ -408,6 +419,25 @@ export default class Md2OverleafPlugin extends Plugin {
 
     this.resolvedPluginDir = __dirname;
     return this.resolvedPluginDir;
+  }
+
+  private async resolveMissingImage(rel: string, vaultPath: string): Promise<string | null> {
+    try {
+      const normalized = rel.replace(/\\/g, "/");
+      const candidateName = path.basename(normalized);
+      if (!candidateName) return null;
+
+      const files = this.app.vault.getFiles();
+      const match = files.find((file) => file.name === candidateName);
+      if (!match) {
+        console.warn("[md2overleaf] global search also failed for image", candidateName);
+        return null;
+      }
+      return path.join(vaultPath, match.path);
+    } catch (error) {
+      console.warn("[md2overleaf] failed to search attachments for", rel, error);
+      return null;
+    }
   }
 
 }
