@@ -4,6 +4,7 @@ dist/
 build/
 .esbuild/
 *.map
+main.js
 
 # OS/editor
 .DS_Store
