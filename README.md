@@ -27,7 +27,7 @@ This plugin:
 6. Enable it in Settings → Community Plugins.
 
 ### Installation (developer)
-1. git clone https://github.com/yourname/md2overleaf
+1. git clone https://github.com/asafdayan/md2overleaf
 2. cd md2overleaf
 3. npm install
 4. npm run build
